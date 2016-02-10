@@ -1,0 +1,12 @@
+default:
+  extensions:
+    Behat\MinkExtension:
+      goutte: ~
+      selenium2: ~
+      base_url: DRUPAL_ADDRESS
+    Drupal\DrupalExtension:
+      drupal:
+        drupal_root: DRUPAL_PATH
+      api_driver: "drupal"
+      drush:
+        alias: self

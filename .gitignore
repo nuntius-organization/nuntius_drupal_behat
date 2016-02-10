@@ -1,0 +1,5 @@
+/features/bootstrap/features
+/vendor
+/bin
+/behat.local.yml
+.idea
