@@ -1,15 +1,33 @@
 <?php
 
-use Drupal\DrupalExtension\Context\RawDrupalContext;
-use Behat\Behat\Context\SnippetAcceptingContext;
 use Behat\Gherkin\Node\TableNode;
+use Drupal\DrupalExtension\Context\RawDrupalContext;
 
 /**
  * Defines application features from the specific context.
  */
-class FeatureContext extends RawDrupalContext implements SnippetAcceptingContext {
+class FeatureContext extends RawDrupalContext {
 
-  public $entities;
+  /**
+   * @var array
+   *
+   * List of entities to delete.
+   */
+  protected $entities = [];
+
+  /**
+   * @var array
+   *
+   * List of the users.
+   */
+  protected $localUsers = [];
+
+  /**
+   * FeatureContext constructor.
+   */
+  function __construct($parameters) {
+    $this->localUsers = $parameters['users'];
+  }
 
   /**
    * @Given /^I create a "([^"]*)" entity with the settings:$/
@@ -26,23 +44,15 @@ class FeatureContext extends RawDrupalContext implements SnippetAcceptingContext
         continue;
       }
 
+      $this->setValueFromReference($value);
+
       /** @var nuntiusRoomEntity $entity */
       $entity = entity_create($entities[$entity_type], array_combine($headers, $value));
       $entity->save();
 
       $this->entities[$entities[$entity_type]][] = $entity->identifier();
     }
-  }
 
-  /**
-   * @AfterScenario
-   */
-  public function cleanDB($event) {
-    if ($this->entities) {
-      foreach ($this->entities as $type => $ids) {
-        entity_delete_multiple($type, $ids);
-      }
-    }
   }
 
   /**
@@ -84,6 +94,73 @@ class FeatureContext extends RawDrupalContext implements SnippetAcceptingContext
     }
 
     return FALSE;
+  }
+
+  /**
+   * Set property value from reference to property on the class.
+   *
+   * @param $values
+   *   The values of the entity before write it into the DB.
+   */
+  protected function setValueFromReference(&$values) {
+    foreach ($values as &$value) {
+      if (strpos($value, ':') !== FALSE) {
+
+        list($entity_type, $name) = explode(':', $value);
+
+        if (property_exists($this, $entity_type)) {
+          $identifier_key = NULL;
+
+          if ($entity_type == 'users') {
+            $identifier_key = 'uid';
+          }
+
+          if ($identifier_key) {
+            $value = $this->{$entity_type}[$name]->{$identifier_key};
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * @AfterScenario
+   */
+  public function cleanDB($event) {
+    if ($this->entities) {
+      foreach ($this->entities as $type => $ids) {
+        entity_delete_multiple($type, $ids);
+      }
+    }
+  }
+
+  /**
+   * @BeforeScenario
+   */
+  public function before(Behat\Behat\Hook\Scope\BeforeScenarioScope $event) {
+    if (in_array('create-users', $event->getScenario()->getTags())) {
+      // Crete users from the argument table.
+      foreach ($this->localUsers as $user) {
+        $new_user = (object) $user;
+        $new_user->pass = $this->getRandom()->name();
+        $this->userCreate($new_user);
+      }
+    }
+  }
+
+  /**
+   * @When /^I am logging in as "([^"]*)"$/
+   */
+  public function iAmLoggingInAs($name) {
+    if (!isset($this->users[$name])) {
+      throw new \Exception(sprintf('No user with %s name is registered with the driver.', $name));
+    }
+
+    // Change internal current user.
+    $this->user = $this->users[$name];
+
+    // Login.
+    $this->login();
   }
 
 }

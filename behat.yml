@@ -2,7 +2,20 @@ default:
   suites:
     default:
       contexts:
-        - FeatureContext
+        - FeatureContext:
+          - users:
+              user1:
+                name: Clark
+                email: clark@TheDailyPlanet.com
+              user2:
+                name: Louis
+                mail: louis@TheDailyPlanet.com
+              user3:
+                name: Peter
+                mail: peter@TheDailyBugle.com
+              user4:
+                name: Marry
+                mail: marryJwatson@gmail.com
         - Drupal\DrupalExtension\Context\DrupalContext
         - Drupal\DrupalExtension\Context\MinkContext
         - Drupal\DrupalExtension\Context\MessageContext
