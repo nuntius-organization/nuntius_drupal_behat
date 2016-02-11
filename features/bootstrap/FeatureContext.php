@@ -23,6 +23,16 @@ class FeatureContext extends RawDrupalContext {
   protected $localUsers = [];
 
   /**
+   * @var array
+   *
+   * Map human readable name to entity type.
+   */
+  protected $entityTypes = [
+    'room' => 'nuntius_room',
+    'audience room' => 'nuntius_room_audience',
+  ];
+
+  /**
    * FeatureContext constructor.
    */
   function __construct($parameters) {
@@ -33,9 +43,6 @@ class FeatureContext extends RawDrupalContext {
    * @Given /^I create a "([^"]*)" entity with the settings:$/
    */
   public function iCreateAEntityWithTheSettings($entity_type, TableNode $table) {
-    $entities = [
-      'room' => 'nuntius_room',
-    ];
 
     $headers = $table->getRow(0);
 
@@ -47,10 +54,10 @@ class FeatureContext extends RawDrupalContext {
       $this->setValueFromReference($value);
 
       /** @var nuntiusRoomEntity $entity */
-      $entity = entity_create($entities[$entity_type], array_combine($headers, $value));
+      $entity = entity_create($this->entityTypes[$entity_type], array_combine($headers, $value));
       $entity->save();
 
-      $this->entities[$entities[$entity_type]][] = $entity->identifier();
+      $this->entities[$this->entityTypes[$entity_type]][] = $entity->identifier();
     }
 
   }
@@ -118,6 +125,24 @@ class FeatureContext extends RawDrupalContext {
           if ($identifier_key) {
             $value = $this->{$entity_type}[$name]->{$identifier_key};
           }
+        }
+        else {
+          $entity_type = $this->entityTypes[$entity_type];
+          $entity_info = entity_get_info($entity_type);
+
+          $query = new EntityFieldQuery();
+          $results = $query
+            ->entityCondition('entity_type', $entity_type)
+            ->propertyCondition($entity_info['entity keys']['label'], $name)
+            ->execute();
+
+          if (empty($results['nuntius_room'])) {
+            throw new Exception('Could not found entity by the ' . $value . ' filter criteria.');
+          }
+
+          $keys = array_keys($results['nuntius_room']);
+
+          $value = reset($keys);
         }
       }
     }
